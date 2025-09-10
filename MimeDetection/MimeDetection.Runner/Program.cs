@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using MimeDetection;
 
 class Program
@@ -16,7 +17,7 @@ class Program
         // Tes 2: JPEG header with .exe extension
         var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF };
         var result2 = service.GetFileType("renamed.exe", jpegHeader);
-        Console.WriteLine($"[Konten JPEG] renamed.exe → {result2.Extension} → {result2.MimeType}");
+        Console.WriteLine($"[JPEG] renamed.exe → {result2.Extension} → {result2.MimeType}");
 
         // Tes 3: ZIP header with .docx extension
         var zipHeader = new byte[] { 0x50, 0x4B, 0x03, 0x04 };
@@ -39,7 +40,38 @@ class Program
         var result7 = service.GetFileType("noext", zipHeader);
         Console.WriteLine($"[ZIP tanpa ekstensi] noext → {result7.Extension} → {result7.MimeType}");
 
-        Console.WriteLine("=== Selesai ===");
+        Console.WriteLine("=== Done ===");
+
+        Console.WriteLine("=== MIME Detection Test dengan file asli ===");
+
+        TestFile(service, @"D:\File Samples\sample1 PDF.pdf");
+        TestFile(service, @"D:\File Samples\sample_640×426 GIF.gif");
+        TestFile(service, @"D:\File Samples\sample1 MP3.mp3");
+        TestFile(service, @"D:\File Samples\zip_2MB ZIP.zip");
+        TestFile(service, @"D:\File Samples\sample2 DOC.doc");
+        TestFile(service, @"D:\File Samples\sample2 DOCX.docx");
+        TestFile(service, @"D:\File Samples\sample1 XLS.xls");
+        TestFile(service, @"D:\File Samples\sample2 XLSX.xlsx");
+        TestFile(service, @"D:\File Samples\sample2 CSV.csv");
+        TestFile(service, @"D:\File Samples\sample2 PPT.ppt");
+        TestFile(service, @"D:\File Samples\sample2 RB.rb");
+        TestFile(service, @"D:\File Samples\sample3 TXT.txt");
+
+        Console.WriteLine("=== Done ===");
+    }
+
+    static void TestFile(MimeTypeService service, string path)
+    {
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"[SKIP] {path} (File Not Found!)");
+            return;
+        }
+
+        byte[] header = File.ReadAllBytes(path);
+
+        var result = service.GetFileType(path, header);
+        Console.WriteLine($"{Path.GetFileName(path)} → {result.Extension} → {result.MimeType}");
     }
 }
 

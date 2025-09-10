@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 
 namespace MimeDetection
@@ -116,44 +117,57 @@ namespace MimeDetection
             }
             return true;
         }
+
         // Main detection method 
         public FileTypeRecord GetFileType(string fileName, byte[]? content = null)
         {
             var ext = Path.GetExtension(fileName)?.Trim().ToLowerInvariant();
-            if (content != null)
+
+            // 1. Kalau Office modern langsung pakai detector
+            if (ext == ".docx" || ext == ".xlsx" || ext == ".pptx")
             {
-                // 1. Signature match known file types (PNG, JPEG, dll) 
-                foreach (var type in knownFileTypes)
+                try
                 {
-                    if (StartOfFileContainsFileType(type, content))
-                    {
-                        return new FileTypeRecord(type.Extension, _map.TryGetValue(type.Extension, out
-                          var mime) ? mime : "application/octet-stream");
-                    }
+                    var officeMime = Helper.OfficeFileDetector.DetectOfficeFile(fileName);
+                    return new FileTypeRecord(ext, officeMime);
                 }
-                // 2. Signature match unknown file types (ZIP, Office) 
-                var matchedTypes = UnknownFileTypes.Where(t => StartOfFileContainsFileType(t, content)).ToList();
-                // 2a. Check extension
-                var matchByExtension = matchedTypes.FirstOrDefault(t => t.Extension.ToLowerInvariant() == ext);
-                if (matchByExtension != null)
-                {
-                    return new FileTypeRecord(matchByExtension.Extension, _map.TryGetValue(matchByExtension.Extension, out
-                      var mime) ? mime : "application/octet-stream");
-                }
-                // 2b. Fallback to ZIP 
-                if (matchedTypes.Any(t => t.Extension == ".zip"))
+                catch
                 {
                     return new FileTypeRecord(".zip", "application/zip");
                 }
             }
-            // 3. Fallback by extension
-            if (!string.IsNullOrEmpty(ext) && _map.TryGetValue(ext, out
-                var fallbackMime))
+
+            // 2. Signature match known file types
+            if (content != null)
+            {
+                foreach (var type in knownFileTypes)
+                {
+                    if (StartOfFileContainsFileType(type, content))
+                    {
+                        return new FileTypeRecord(type.Extension,
+                            _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                    }
+                }
+
+                // 3. Signature match unknown legacy types
+                foreach (var type in UnknownFileTypes)
+                {
+                    if (StartOfFileContainsFileType(type, content))
+                    {
+                        return new FileTypeRecord(type.Extension,
+                            _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                    }
+                }
+            }
+
+            // 4. Fallback by extension
+            if (!string.IsNullOrEmpty(ext) && _map.TryGetValue(ext, out var fallbackMime))
             {
                 return new FileTypeRecord(ext, fallbackMime);
             }
-            // 4. Fallback unknown
+
+            // 5. Fallback unknown
             return new FileTypeRecord(ext ?? string.Empty, "application/octet-stream");
         }
     }
-}
+}   
