@@ -1,9 +1,11 @@
-namespace MimeDetection
+public class FileTypeRecord
 {
-    public class FileTypeRecord
+    public string Extension { get; }
+    public string MimeType { get; }
+
+    public FileTypeRecord(string extension, string mimeType)
     {
-        public string Name { get; set; } = string.Empty;
-        public string Extension { get; set; } = string.Empty;
-        public string MimeType { get; set; } = string.Empty;
+        Extension = extension;
+        MimeType = mimeType;
     }
 }

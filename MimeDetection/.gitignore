@@ -3,7 +3,6 @@ bin/
 obj/
 
 # Local testing
-MimeDetection.Tester/
 
 # Visual Studio
 .vs/
