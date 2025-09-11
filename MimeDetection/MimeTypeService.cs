@@ -123,51 +123,59 @@ namespace MimeDetection
         {
             var ext = Path.GetExtension(fileName)?.Trim().ToLowerInvariant();
 
-            // 1. Kalau Office modern langsung pakai detector
-            if (ext == ".docx" || ext == ".xlsx" || ext == ".pptx")
+            try
             {
-                try
+                // 1. Office Open XML special case
+                if (ext == ".docx" || ext == ".xlsx" || ext == ".pptx")
                 {
-                    var officeMime = Helper.OfficeFileDetector.DetectOfficeFile(fileName);
-                    return new FileTypeRecord(ext, officeMime);
-                }
-                catch
-                {
-                    return new FileTypeRecord(".zip", "application/zip");
-                }
-            }
-
-            // 2. Signature match known file types
-            if (content != null)
-            {
-                foreach (var type in knownFileTypes)
-                {
-                    if (StartOfFileContainsFileType(type, content))
+                    try
                     {
-                        return new FileTypeRecord(type.Extension,
-                            _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                        var (mime, error) = Helper.OfficeFileDetector.DetectOfficeFile(fileName);
+                        return new FileTypeRecord(Path.GetExtension(fileName), mime, error);
+                    }
+                    catch (Exception ex)
+                    {
+                        return new FileTypeRecord(".zip", "application/zip", $"Unknown Office structure: {ex.Message}");
                     }
                 }
 
-                // 3. Signature match unknown legacy types
-                foreach (var type in UnknownFileTypes)
+                // 2. Signature match known file types
+                if (content != null)
                 {
-                    if (StartOfFileContainsFileType(type, content))
+                    foreach (var type in knownFileTypes)
                     {
-                        return new FileTypeRecord(type.Extension,
-                            _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                        if (StartOfFileContainsFileType(type, content))
+                        {
+                            return new FileTypeRecord(type.Extension,
+                                _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                        }
+                    }
+
+                    // 3. Signature match unknown legacy types
+                    foreach (var type in UnknownFileTypes)
+                    {
+                        if (StartOfFileContainsFileType(type, content))
+                        {
+                            return new FileTypeRecord(type.Extension,
+                                _map.TryGetValue(type.Extension, out var mime) ? mime : "application/octet-stream");
+                        }
                     }
                 }
-            }
 
-            // 4. Fallback by extension
-            if (!string.IsNullOrEmpty(ext) && _map.TryGetValue(ext, out var fallbackMime))
+                // 4. Fallback by extension
+                if (!string.IsNullOrEmpty(ext) && _map.TryGetValue(ext, out var fallbackMime))
+                {
+                    return new FileTypeRecord(ext, fallbackMime);
+                }
+
+                // 5. Fallback unknown
+                return new FileTypeRecord(ext ?? string.Empty, "application/octet-stream");
+            }
+            catch (Exception ex)
             {
-                return new FileTypeRecord(ext, fallbackMime);
+                // kalau error fatal
+                return new FileTypeRecord(ext ?? string.Empty, "application/octet-stream", ex.Message);
             }
-
-            // 5. Fallback unknown
-            return new FileTypeRecord(ext ?? string.Empty, "application/octet-stream");
         }
     }
 }   
